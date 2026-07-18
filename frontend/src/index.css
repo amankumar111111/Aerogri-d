@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Signal state colors — colorblind-safe */
+.signal-watch { background-color: #3b82f6; }        /* blue */
+.signal-probable_hotspot { background-color: #f59e0b; } /* amber */
+.signal-high_confidence { background-color: #ef4444; }  /* red */
+.signal-archived { background-color: #6b7280; }         /* gray */
