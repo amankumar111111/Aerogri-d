@@ -4,6 +4,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     model_config = {"env_prefix": "AEROGRID_"}
 
+    # CORS
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+
     # Database — SQLite by default for local dev, PostgreSQL for production
     database_url: str = "sqlite+aiosqlite:///./aerogrid.db"
 

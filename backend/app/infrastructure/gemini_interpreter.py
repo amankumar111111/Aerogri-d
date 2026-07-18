@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import time
 from typing import Any
@@ -57,7 +58,7 @@ class GeminiInterpreterAdapter(ObservationInterpreter):
                 {
                     "inline_data": {
                         "mime_type": "image/jpeg",
-                        "data": __import__("base64").b64encode(image_bytes).decode(),
+                        "data": base64.b64encode(image_bytes).decode(),
                     }
                 }
             )
@@ -67,7 +68,7 @@ class GeminiInterpreterAdapter(ObservationInterpreter):
                 {
                     "inline_data": {
                         "mime_type": "audio/webm",
-                        "data": __import__("base64").b64encode(voice_bytes).decode(),
+                        "data": base64.b64encode(voice_bytes).decode(),
                     }
                 }
             )

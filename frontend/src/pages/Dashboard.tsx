@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { selectedSignalId, setSelectedSignal } = useStore();
   const navigate = useNavigate();
 
@@ -43,12 +44,15 @@ export default function Dashboard() {
         const [s, a] = await Promise.all([listSignals({ limit: 50 }), getAnalytics()]);
         setSignals(s);
         setAnalytics(a);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
       }
     };
     load();
-    const interval = setInterval(load, 30000); // Refresh every 30s
+    const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -67,6 +71,18 @@ export default function Dashboard() {
 
   if (loading) {
     return <div className="flex items-center justify-center h-96 text-gray-400">Loading signals...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center">
+        <p className="text-red-400 text-lg mb-2">Failed to load dashboard</p>
+        <p className="text-gray-500 text-sm mb-4">{error}</p>
+        <button onClick={() => { setLoading(true); setError(null); }} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -141,7 +157,7 @@ export default function Dashboard() {
                   className={`px-4 py-3 border-b border-gray-700/50 cursor-pointer transition-colors ${
                     selectedSignalId === signal.id
                       ? "bg-gray-700"
-                      : "hover:bg-gray-750 hover:bg-gray-800/50"
+                      : "hover:bg-gray-700"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">

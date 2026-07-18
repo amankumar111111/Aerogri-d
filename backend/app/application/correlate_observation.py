@@ -137,7 +137,7 @@ class CorrelateObservationUseCase:
             contributing_observation_ids=[request.observation_id],
             contributions=[contribution],
             environmental_context=env_ctx,
-            state=SignalState.WATCH if best_score >= self.config.threshold_watch else SignalState.WATCH,
+            state=SignalState.WATCH,
         )
 
         await self.signal_store.save(new_signal)

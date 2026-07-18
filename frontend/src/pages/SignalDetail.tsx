@@ -33,12 +33,12 @@ export default function SignalDetail() {
   const [signal, setSignal] = useState<Signal | null>(null);
   const [observations, setObservations] = useState<Map<string, Observation>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     getSignal(id).then(async (s) => {
       setSignal(s);
-      // Fetch contributing observations
       const obsMap = new Map<string, Observation>();
       await Promise.all(
         s.contributing_observation_ids.slice(0, 10).map(async (obsId) => {
@@ -52,10 +52,19 @@ export default function SignalDetail() {
       );
       setObservations(obsMap);
       setLoading(false);
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : "Failed to load signal");
+      setLoading(false);
     });
   }, [id]);
 
   if (loading) return <div className="p-8 text-gray-400">Loading signal...</div>;
+  if (error) return (
+    <div className="p-8 text-center">
+      <p className="text-red-400 mb-2">{error}</p>
+      <button onClick={() => navigate(-1)} className="text-sm text-gray-400 hover:text-white">← Back</button>
+    </div>
+  );
   if (!signal) return <div className="p-8 text-gray-400">Signal not found</div>;
 
   // Compute explainability from contributions

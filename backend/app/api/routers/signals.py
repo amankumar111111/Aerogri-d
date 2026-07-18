@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
 
-from app.api.errors import AppError, make_error_response
+from app.api.errors import AppError
 from app.api.mappers import signal_to_response
 from app.api.schemas import ErrorResponse, SignalActionResponse, SignalResponse, SignalStateEnum
 from app.domain.value_objects import SignalState
