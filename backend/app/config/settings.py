@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
+    # Authentication
+    api_key: str = "aerogrid-pilot-key"
+    auth_exempt_paths: str = "/health,/ready,/metrics,/metrics/live,/api/docs,/api/redoc,/api/v1/openapi.json,/api/v1/health,/api/v1/ready,/api/v1/metrics"
+
     # Database — SQLite by default for local dev, PostgreSQL for production
     database_url: str = "sqlite+aiosqlite:///./aerogrid.db"
 

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.errors import AppError, app_error_handler, correlation_id_middleware, make_error_response
 from app.api.observability import metrics, observability_middleware
-from app.api.routers import analytics, calibration, health, observations, signals
+from app.api.routers import analytics, calibration, health, notifications, observations, signals
 from app.application.correlate_observation import CorrelateObservationUseCase
 from app.application.interpret_observation import InterpretObservationUseCase
 from app.application.submit_observation import SubmitObservationUseCase
@@ -64,6 +64,16 @@ async def lifespan(app: FastAPI):
         interpreter = GeminiInterpreterAdapter()
         event_bus = InMemoryEventBus()
 
+        # Notification system
+        from app.infrastructure.notifications import (
+            EmailNotificationService,
+            InAppNotificationService,
+            NotificationOrchestrator,
+        )
+        email_service = EmailNotificationService()
+        in_app_service = InAppNotificationService(event_bus)
+        notification_orchestrator = NotificationOrchestrator(email_service, in_app_service)
+
         app.state.submit_observation_uc = SubmitObservationUseCase(
             obs_store, audit_log, event_bus
         )
@@ -73,6 +83,7 @@ async def lifespan(app: FastAPI):
         app.state.correlate_observation_uc = CorrelateObservationUseCase(
             signal_store, signal_event_store, event_bus, config
         )
+        app.state.notification_orchestrator = notification_orchestrator
         app.state.db_session = session
 
         yield
@@ -100,6 +111,26 @@ app.add_middleware(
 app.middleware("http")(correlation_id_middleware)
 app.middleware("http")(observability_middleware)
 
+
+# Authentication middleware — API key check for non-exempt paths
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    exempt = [p.strip() for p in settings.auth_exempt_paths.split(",")]
+
+    # Skip auth for exempt paths and OpenAPI docs
+    if any(path.startswith(e) for e in exempt) or path.startswith("/docs") or path.startswith("/openapi"):
+        return await call_next(request)
+
+    api_key = request.headers.get("X-API-Key")
+    if api_key != settings.api_key:
+        return JSONResponse(
+            status_code=401,
+            content={"error": {"code": "UNAUTHORIZED", "message": "Invalid or missing API key"}},
+        )
+
+    return await call_next(request)
+
 app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(Exception, generic_error_handler)
 
@@ -114,4 +145,5 @@ app.include_router(observations.router, prefix="/api/v1")
 app.include_router(signals.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(calibration.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
