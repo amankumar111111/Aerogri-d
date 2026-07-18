@@ -1,14 +1,70 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Testing
 .pytest_cache/
 .coverage
 htmlcov/
-*.egg-info/
-dist/
-build/
+coverage.xml
+.mutmut-cache/
+
+# Type checking
+.pytype/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment / Secrets
 .env
-.venv/
-venv/
+.env.*
+!.env.example
+
+# Node.js (frontend)
 node_modules/
+frontend/dist/
 .next/
+.nuxt/
+
+# Logs
 *.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database (local dev)
+*.db
+*.sqlite
+*.sqlite3
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/.terraform.lock.hcl
+
+# Docker
+docker-compose.override.yml
+
+# Generated
+demo_data.json

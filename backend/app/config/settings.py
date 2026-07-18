@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     model_config = {"env_prefix": "AEROGRID_"}
 
-    # Database
-    database_url: str = "postgresql+asyncpg://aerogrid:aerogrid@localhost:5432/aerogrid"
+    # Database — SQLite by default for local dev, PostgreSQL for production
+    database_url: str = "sqlite+aiosqlite:///./aerogrid.db"
 
     # Gemini
     gemini_api_key: str = ""
