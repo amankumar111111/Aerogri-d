@@ -1,0 +1,110 @@
+[
+  {
+    "content": "Thick black smoke rising from behind the factory near Kharadi bridge.",
+    "latitude": 18.68217782784403,
+    "longitude": 73.94867732385488,
+    "category": "smoke",
+    "language": "en",
+    "device_id": "demo-001",
+    "minutes_ago": 25
+  },
+  {
+    "content": "कारखान्याजवळ मोठा धूर दिसत आहे. काल्या धूराचा गुळा उठत आहे.",
+    "latitude": 18.682473085586473,
+    "longitude": 73.94778832401127,
+    "category": "smoke",
+    "language": "mr",
+    "device_id": "demo-002",
+    "minutes_ago": 20
+  },
+  {
+    "content": "Heavy smoke from Kharadi industrial area. Smells like burning plastic.",
+    "latitude": 18.682145566882983,
+    "longitude": 73.94850898294798,
+    "category": "smoke",
+    "language": "en",
+    "device_id": "demo-003",
+    "minutes_ago": 15
+  },
+  {
+    "content": "फॅक्टरीच्या मागे मोठा धूर आहे. वास येत आहे बर्निंग प्लास्टिकचा.",
+    "latitude": 18.68251074505677,
+    "longitude": 73.94786771192533,
+    "category": "smoke",
+    "language": "hi",
+    "device_id": "demo-004",
+    "minutes_ago": 10
+  },
+  {
+    "content": "Dusty conditions near the construction site on Baner Road. Visibility poor.",
+    "latitude": 18.55870783032351,
+    "longitude": 73.78708934289429,
+    "category": "dust",
+    "language": "en",
+    "device_id": "demo-005",
+    "minutes_ago": 40
+  },
+  {
+    "content": "Construction dust covering the entire street. Cars with headlights on.",
+    "latitude": 18.558950618306714,
+    "longitude": 73.78657575909345,
+    "category": "construction_dust",
+    "language": "en",
+    "device_id": "demo-006",
+    "minutes_ago": 30
+  },
+  {
+    "content": "बानेर रोडवर धुळीचा गाढा ढग आहे. बिल्डिंग साईटवरून धूर येत आहे.",
+    "latitude": 18.559044538839306,
+    "longitude": 73.78723741092674,
+    "category": "dust",
+    "language": "mr",
+    "device_id": "demo-007",
+    "minutes_ago": 25
+  },
+  {
+    "content": "Slight smoky smell near the vegetable market. Might be someone burning waste.",
+    "latitude": 18.5074,
+    "longitude": 73.8077,
+    "category": "smoke",
+    "language": "en",
+    "device_id": "demo-008",
+    "minutes_ago": 35
+  },
+  {
+    "content": "Chemical smell near the industrial estate in Kharadi.",
+    "latitude": 18.683,
+    "longitude": 73.947,
+    "category": "chemical",
+    "language": "en",
+    "device_id": "demo-dup",
+    "minutes_ago": 18
+  },
+  {
+    "content": "Chemical smell near the industrial estate in Kharadi.",
+    "latitude": 18.683,
+    "longitude": 73.947,
+    "category": "chemical",
+    "language": "en",
+    "device_id": "demo-dup",
+    "minutes_ago": 18
+  },
+  {
+    "content": "Chemical odor near the water treatment plant in Hadapsar.",
+    "latitude": 18.502700690392945,
+    "longitude": 73.94268250854418,
+    "category": "chemical",
+    "language": "en",
+    "device_id": "demo-009",
+    "minutes_ago": 22
+  },
+  {
+    "content": "Smoke visible near Hadapsar water treatment. Strong chemical smell.",
+    "latitude": 18.50232940321318,
+    "longitude": 73.94329924740721,
+    "category": "smoke",
+    "language": "en",
+    "device_id": "demo-010",
+    "minutes_ago": 18
+  }
+]

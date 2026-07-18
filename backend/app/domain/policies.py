@@ -161,6 +161,8 @@ class CorrelationConfig:
     min_source_types_probable_hotspot: int = 2
     min_source_types_high_confidence: int = 2
     composite_weights: CompositeWeights = CompositeWeights()
+    # Spatial gate: observations beyond this distance cannot correlate
+    spatial_gate_radius_meters: float = 1000.0
 
 
 DEFAULT_CONFIG = CorrelationConfig()

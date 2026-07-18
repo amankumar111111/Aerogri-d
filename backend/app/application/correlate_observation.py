@@ -91,6 +91,10 @@ class CorrelateObservationUseCase:
                 environmental=env,
             )
 
+            # Spatial gate: observations beyond gate radius cannot correlate
+            if distance > self.config.spatial_gate_radius_meters:
+                score = 0.0
+
             if score > best_score:
                 best_score = score
                 best_match = signal
