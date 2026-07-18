@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import { ErrorBoundary } from "./ErrorBoundary";
 import CitizenFlow from "./pages/CitizenFlow";
 import Dashboard from "./pages/Dashboard";
 import SignalDetail from "./pages/SignalDetail";
@@ -33,19 +34,21 @@ function Nav() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-950 text-gray-100">
-        <Nav />
-        <main className="max-w-7xl mx-auto p-4">
-          <Routes>
-            <Route path="/" element={<CitizenFlow />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/signals/:id" element={<SignalDetail />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/admin" element={<Admin />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <div className="min-h-screen bg-gray-950 text-gray-100">
+          <Nav />
+          <main className="max-w-7xl mx-auto p-4">
+            <Routes>
+              <Route path="/" element={<CitizenFlow />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/signals/:id" element={<SignalDetail />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/admin" element={<Admin />} />
+            </Routes>
+          </main>
+        </div>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
