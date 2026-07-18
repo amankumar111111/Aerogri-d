@@ -42,6 +42,107 @@ class CorrelateResponse:
     is_new_signal: bool
 
 
+def _score_signal_against_observation(
+    signal: Signal,
+    request: CorrelateRequest,
+    config: CorrelationConfig,
+) -> float:
+    """Score how well an existing signal matches a new observation."""
+    distance = signal.location.distance_to(request.location)
+    time_delta = (request.timestamp - signal.created_at).total_seconds() / 60.0
+
+    sem = semantic_score(signal.category, request.category, evidence_overlap=0.5)
+    sp = spatial_score(distance)
+    tmp = temporal_score(time_delta)
+    indep = independence_score(is_duplicate=False, same_device=False)
+
+    env_ctx = request.environmental_context or {}
+    env_flags = {
+        k: v for k, v in env_ctx.items()
+        if isinstance(v, bool) and k in (
+            "wind_consistent", "low_humidity_high_temp",
+            "recent_precipitation", "firms_fire_detected", "cpcb_elevated",
+        )
+    }
+    env = environmental_score(**env_flags)
+
+    score = composite_score(semantic=sem, spatial=sp, temporal=tmp, independence=indep, environmental=env)
+
+    if distance > config.spatial_gate_radius_meters:
+        score = 0.0
+
+    return score
+
+
+def _build_contribution(
+    request: CorrelateRequest,
+    best_match: Signal | None,
+    best_score: float,
+    env_ctx: dict,
+) -> ContributionEntry:
+    """Build a ContributionEntry recording how this observation scored."""
+    env_flags = {
+        k: v for k, v in env_ctx.items()
+        if isinstance(v, bool) and k in (
+            "wind_consistent", "low_humidity_high_temp",
+            "recent_precipitation", "firms_fire_detected", "cpcb_elevated",
+        )
+    }
+    env_score = environmental_score(**env_flags)
+
+    return ContributionEntry(
+        observation_id=request.observation_id,
+        fingerprint=request.fingerprint,
+        dimension_scores={
+            "semantic": 0.0,
+            "spatial": 0.0,
+            "temporal": 0.0,
+            "independence": 1.0,
+            "environmental": env_score,
+        },
+        contribution_score=best_score if best_match else 0.0,
+        weighted_contribution=best_score * 0.7 if best_match else 0.0,
+        evaluation_timestamp=request.timestamp,
+    )
+
+
+def _find_best_match(
+    existing_signals: list[Signal],
+    request: CorrelateRequest,
+    config: CorrelationConfig,
+) -> tuple[Signal | None, float]:
+    """Find the best matching signal for a new observation."""
+    best_match: Signal | None = None
+    best_score = 0.0
+
+    for signal in existing_signals:
+        if signal.state == SignalState.ARCHIVED:
+            continue
+        score = _score_signal_against_observation(signal, request, config)
+        if score > best_score:
+            best_score = score
+            best_match = signal
+
+    return best_match, best_score
+
+
+def _determine_new_state(signal: Signal, score: float, config: CorrelationConfig) -> SignalState:
+    """Determine if a signal should transition to a new state."""
+    if (
+        signal.state == SignalState.WATCH
+        and score >= config.threshold_probable_hotspot
+        and len(signal.contributing_observation_ids) >= config.min_observations_probable_hotspot
+    ):
+        return SignalState.PROBABLE_HOTSPOT
+    elif (
+        signal.state == SignalState.PROBABLE_HOTSPOT
+        and score >= config.threshold_high_confidence
+        and len(signal.contributing_observation_ids) >= config.min_observations_high_confidence
+    ):
+        return SignalState.HIGH_CONFIDENCE
+    return signal.state
+
+
 class CorrelateObservationUseCase:
     def __init__(
         self,
@@ -57,125 +158,56 @@ class CorrelateObservationUseCase:
 
     async def execute(self, request: CorrelateRequest) -> CorrelateResponse:
         existing_signals = await self.signal_store.list_(limit=100)
-
-        best_match: Signal | None = None
-        best_score = 0.0
-        # C3 FIX: Initialize dimension scores to prevent NameError if no signals match
-        sem = sp = tmp = indep = 0.0
-
-        for signal in existing_signals:
-            if signal.state == SignalState.ARCHIVED:
-                continue
-
-            distance = signal.location.distance_to(request.location)
-            time_delta = (request.timestamp - signal.created_at).total_seconds() / 60.0
-
-            sem = semantic_score(
-                signal.category,
-                request.category,
-                evidence_overlap=0.5,
-            )
-            sp = spatial_score(distance)
-            tmp = temporal_score(time_delta)
-            indep = independence_score(
-                is_duplicate=False,
-                same_device=False,  # C2 FIX: Signal doesn't track device_id; cannot determine same device
-            )
-            env = environmental_score(**(request.environmental_context or {}))
-
-            score = composite_score(
-                semantic=sem,
-                spatial=sp,
-                temporal=tmp,
-                independence=indep,
-                environmental=env,
-            )
-
-            # Spatial gate: observations beyond gate radius cannot correlate
-            if distance > self.config.spatial_gate_radius_meters:
-                score = 0.0
-
-            if score > best_score:
-                best_score = score
-                best_match = signal
+        best_match, best_score = _find_best_match(existing_signals, request, self.config)
 
         env_ctx = request.environmental_context or {}
-        # Extract boolean flags for environmental_score (ignore non-boolean keys like temperature)
-        env_flags = {
-            k: v for k, v in env_ctx.items()
-            if isinstance(v, bool) and k in (
-                "wind_consistent", "low_humidity_high_temp",
-                "recent_precipitation", "firms_fire_detected", "cpcb_elevated",
-            )
-        }
-        env_score = environmental_score(**env_flags)
-
-        contribution = ContributionEntry(
-            observation_id=request.observation_id,
-            fingerprint=request.fingerprint,
-            dimension_scores={
-                "semantic": sem if best_match else 0.0,
-                "spatial": sp if best_match else 0.0,
-                "temporal": tmp if best_match else 0.0,
-                "independence": indep if best_match else 1.0,
-                "environmental": env_score,
-            },
-            contribution_score=best_score if best_match else 0.0,
-            weighted_contribution=best_score * 0.7 if best_match else 0.0,
-            evaluation_timestamp=request.timestamp,
-        )
+        contribution = _build_contribution(request, best_match, best_score, env_ctx)
 
         if best_match and best_score >= self.config.threshold_watch:
-            return await self._add_to_existing_signal(
-                best_match, contribution, best_score, env_ctx
-            )
+            return await self._add_to_existing_signal(best_match, contribution, best_score, env_ctx)
 
-        new_signal = Signal(
+        return await self._create_new_signal(request, contribution, best_score, env_ctx)
+
+    async def _create_new_signal(
+        self,
+        request: CorrelateRequest,
+        contribution: ContributionEntry,
+        score: float,
+        env_ctx: dict,
+    ) -> CorrelateResponse:
+        signal = Signal(
             location=request.location,
             category=request.category,
-            confidence=ConfidenceScore(value=best_score),
+            confidence=ConfidenceScore(value=score),
             contributing_observation_ids=[request.observation_id],
             contributions=[contribution],
             environmental_context=env_ctx,
             state=SignalState.WATCH,
         )
-
-        await self.signal_store.save(new_signal)
+        await self.signal_store.save(signal)
 
         event = SignalEvent(
-            signal_id=new_signal.id,
+            signal_id=signal.id,
             sequence_number=1,
             event_type="created",
-            new_state=new_signal.state,
-            composite_score=best_score,
+            new_state=signal.state,
+            composite_score=score,
             contribution_entries=[contribution],
             trigger="correlation_engine",
         )
         await self.signal_event_store.save(event)
 
-        await self.event_bus.publish(
-            "SignalCreated",
-            {
-                "signal_id": new_signal.id,
-                "policy_version": "2.0",
-                "initial_confidence": best_score,
-                "contributing_observations": [request.observation_id],
-            },
-        )
+        await self.event_bus.publish("SignalCreated", {
+            "signal_id": signal.id,
+            "policy_version": "2.0",
+            "initial_confidence": score,
+            "contributing_observations": [request.observation_id],
+        })
 
-        return CorrelateResponse(
-            signal_id=new_signal.id,
-            state=new_signal.state,
-            composite_score=best_score,
-            is_new_signal=True,
-        )
+        return CorrelateResponse(signal_id=signal.id, state=signal.state, composite_score=score, is_new_signal=True)
 
     async def _add_to_existing_signal(
-        self,
-        signal: Signal,
-        contribution: ContributionEntry,
-        score: float,
-        env_ctx: dict,
+        self, signal: Signal, contribution: ContributionEntry, score: float, env_ctx: dict,
     ) -> CorrelateResponse:
         signal.contributing_observation_ids.append(contribution.observation_id)
         signal.contributions.append(contribution)
@@ -184,52 +216,27 @@ class CorrelateObservationUseCase:
         signal.version += 1
         signal.updated_at = datetime.now(timezone.utc)
 
-        new_state = signal.state
-        if (
-            signal.state == SignalState.WATCH
-            and score >= self.config.threshold_probable_hotspot
-            and len(signal.contributing_observation_ids) >= self.config.min_observations_probable_hotspot
-        ):
-            new_state = SignalState.PROBABLE_HOTSPOT
-        elif (
-            signal.state == SignalState.PROBABLE_HOTSPOT
-            and score >= self.config.threshold_high_confidence
-            and len(signal.contributing_observation_ids) >= self.config.min_observations_high_confidence
-        ):
-            new_state = SignalState.HIGH_CONFIDENCE
-
         previous_state = signal.state
-        signal.state = new_state
+        signal.state = _determine_new_state(signal, score, self.config)
 
         await self.signal_store.save(signal)
 
         seq = await self.signal_event_store.next_sequence(signal.id)
         event = SignalEvent(
-            signal_id=signal.id,
-            sequence_number=seq,
-            event_type="escalated" if new_state != previous_state else "observation_added",
-            previous_state=previous_state,
-            new_state=new_state,
-            composite_score=score,
-            contribution_entries=[contribution],
+            signal_id=signal.id, sequence_number=seq,
+            event_type="escalated" if signal.state != previous_state else "observation_added",
+            previous_state=previous_state, new_state=signal.state,
+            composite_score=score, contribution_entries=[contribution],
             trigger="correlation_engine",
         )
         await self.signal_event_store.save(event)
 
-        if new_state != previous_state:
-            await self.event_bus.publish(
-                "SignalEscalated",
-                {
-                    "signal_id": signal.id,
-                    "previous_state": previous_state.value,
-                    "new_state": new_state.value,
-                    "composite_score": score,
-                },
-            )
+        if signal.state != previous_state:
+            await self.event_bus.publish("SignalEscalated", {
+                "signal_id": signal.id,
+                "previous_state": previous_state.value,
+                "new_state": signal.state.value,
+                "composite_score": score,
+            })
 
-        return CorrelateResponse(
-            signal_id=signal.id,
-            state=new_state,
-            composite_score=score,
-            is_new_signal=False,
-        )
+        return CorrelateResponse(signal_id=signal.id, state=signal.state, composite_score=score, is_new_signal=False)
