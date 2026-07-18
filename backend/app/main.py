@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.errors import AppError, app_error_handler, correlation_id_middleware, make_error_response
 from app.api.observability import metrics, observability_middleware
+from app.api.rate_limit import rate_limit_middleware
 from app.api.routers import analytics, calibration, health, notifications, observations, signals
 from app.application.correlate_observation import CorrelateObservationUseCase
 from app.application.interpret_observation import InterpretObservationUseCase
@@ -64,6 +65,11 @@ async def lifespan(app: FastAPI):
         interpreter = GeminiInterpreterAdapter()
         event_bus = InMemoryEventBus()
 
+        # Rate limiter
+        from app.infrastructure.rate_limiter import InMemoryRateLimiter
+        rate_limiter = InMemoryRateLimiter()
+        app.state.rate_limiter = rate_limiter
+
         # Notification system
         from app.infrastructure.notifications import (
             EmailNotificationService,
@@ -110,6 +116,12 @@ app.add_middleware(
 )
 app.middleware("http")(correlation_id_middleware)
 app.middleware("http")(observability_middleware)
+
+
+# Rate limiting middleware
+@app.middleware("http")
+async def rate_limiting(request: Request, call_next):
+    return await rate_limit_middleware(request, call_next, request.app.state.rate_limiter)
 
 
 # Authentication middleware — API key check for non-exempt paths
