@@ -70,6 +70,11 @@ async def lifespan(app: FastAPI):
         rate_limiter = InMemoryRateLimiter()
         app.state.rate_limiter = rate_limiter
 
+        # Idempotency store
+        from app.infrastructure.idempotency import InMemoryIdempotencyStore
+        idempotency_store = InMemoryIdempotencyStore()
+        app.state.idempotency_store = idempotency_store
+
         # Notification system
         from app.infrastructure.notifications import (
             EmailNotificationService,
@@ -122,6 +127,14 @@ app.middleware("http")(observability_middleware)
 @app.middleware("http")
 async def rate_limiting(request: Request, call_next):
     return await rate_limit_middleware(request, call_next, request.app.state.rate_limiter)
+
+
+# Idempotency middleware — prevents duplicate observation submissions
+from app.api.idempotency import idempotency_middleware
+
+@app.middleware("http")
+async def idempotency(request: Request, call_next):
+    return await idempotency_middleware(request, call_next, request.app.state.idempotency_store)
 
 
 # Authentication middleware — API key check for non-exempt paths
