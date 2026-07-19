@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.errors import AppError, app_error_handler, correlation_id_middleware, make_error_response
 from app.api.observability import metrics, observability_middleware
@@ -163,7 +164,6 @@ app.add_exception_handler(Exception, generic_error_handler)
 @app.get("/api/v1/metrics/live")
 async def live_metrics():
     """Real-time operational metrics — not the static /metrics endpoint."""
-    from fastapi.responses import JSONResponse
     return JSONResponse(content=metrics.get_summary())
 
 app.include_router(observations.router, prefix="/api/v1")

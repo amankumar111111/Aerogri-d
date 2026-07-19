@@ -16,14 +16,13 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install -r backend/requirements.txt
-          pip install pytest pytest-asyncio pytest-cov ruff pyright
+          pip install -e "./backend[dev]"
       - name: Lint
         run: ruff check backend/
       - name: Type check
         run: pyright backend/
       - name: Test
-        run: cd aerogrid && python -m pytest tests/ -v --cov=backend/app --cov-report=xml
+        run: python -m pytest tests/ -v --cov=backend/app --cov-report=xml
       - name: Coverage check
         run: |
           COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree=ET.parse('coverage.xml'); print(float(tree.getroot().attrib['line-rate']) * 100)")

@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: ${{ env.PYTHON_VERSION }} }
-      - run: pip install -e "backend[dev]"
+      - run: pip install -e "./backend[dev]"
       - run: cd backend && python -m pytest tests/ -v --cov=app --cov-report=xml -x --ignore=tests/test_api.py --ignore=tests/test_load.py
       - uses: actions/upload-artifact@v4
         if: always()
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: ${{ env.PYTHON_VERSION }} }
-      - run: pip install -e "backend[dev]"
+      - run: pip install -e "./backend[dev]"
       - run: cd backend && python -m pytest tests/test_integration.py tests/test_end_to_end.py tests/test_providers_comprehensive.py -v -x
         env:
           AEROGRID_DATABASE_URL: postgresql+asyncpg://aerogrid:test@localhost:5432/aerogrid_test
@@ -80,7 +80,7 @@ jobs:
         with: { python-version: ${{ env.PYTHON_VERSION }} }
       - run: pip install bandit safety
       - run: bandit -r backend/app -f json -o bandit-report.json --severity-level medium
-      - run: safety check --file backend/requirements.txt --full-report
+      - run: pip install -e "./backend[dev]" && safety check --full-report
 
   # Stage 6: Docker Build
   docker-build:
